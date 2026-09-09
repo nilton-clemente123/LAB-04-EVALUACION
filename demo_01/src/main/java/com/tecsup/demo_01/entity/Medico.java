@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,6 +55,7 @@ public class Medico {
     @Column(nullable = false, length = 20)
     private EstadoMedico estado;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "medico")
     private List<MedicoEspecialidad> especialidades = new ArrayList<>();
 
