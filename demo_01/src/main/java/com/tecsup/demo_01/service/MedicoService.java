@@ -6,6 +6,7 @@ import com.tecsup.demo_01.exception.DuplicateResourceException;
 import com.tecsup.demo_01.exception.ResourceNotFoundException;
 import com.tecsup.demo_01.repository.MedicoRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -13,18 +14,25 @@ import java.util.List;
 public class MedicoService {
 
     private final MedicoRepository medicoRepository;
+    private final AuditoriaService auditoriaService;
 
-    public MedicoService(MedicoRepository medicoRepository) {
+    public MedicoService(MedicoRepository medicoRepository, AuditoriaService auditoriaService) {
         this.medicoRepository = medicoRepository;
+        this.auditoriaService = auditoriaService;
     }
 
     /**
      * RF-MED-01: Registrar médico.
      */
+    @Transactional
     public Medico registrar(Medico medico) {
         validarDuplicados(medico);
         validarEstado(medico.getEstado());
-        return medicoRepository.save(medico);
+        Medico guardado = medicoRepository.save(medico);
+        guardado.setCodigo(generarCodigoMedico(guardado.getId()));
+        guardado = medicoRepository.save(guardado);
+        auditoriaService.registrar("REGISTRO", "MEDICO", guardado.getId());
+        return guardado;
     }
 
     /**
@@ -50,7 +58,6 @@ public class MedicoService {
         validarDuplicadosExcluyendoSelf(existente, datosNuevos);
         validarEstado(datosNuevos.getEstado());
 
-        existente.setCodigo(datosNuevos.getCodigo());
         existente.setTipoDocumento(datosNuevos.getTipoDocumento());
         existente.setNumeroDocumento(datosNuevos.getNumeroDocumento());
         existente.setNombres(datosNuevos.getNombres());
@@ -59,7 +66,9 @@ public class MedicoService {
         existente.setCmp(datosNuevos.getCmp());
         existente.setEstado(datosNuevos.getEstado());
 
-        return medicoRepository.save(existente);
+        Medico guardado = medicoRepository.save(existente);
+        auditoriaService.registrar("MODIFICACION", "MEDICO", guardado.getId());
+        return guardado;
     }
 
     /**
@@ -71,13 +80,25 @@ public class MedicoService {
             throw new IllegalArgumentException("El estado debe ser ACTIVO o INACTIVO");
         }
         existente.setEstado(nuevoEstado);
-        return medicoRepository.save(existente);
+        Medico guardado = medicoRepository.save(existente);
+        auditoriaService.registrar("MODIFICACION", "MEDICO", guardado.getId());
+        return guardado;
+    }
+
+    /**
+     * Elimina un médico (borrado físico).
+     * Verificación de integridad: lanza 404 si no existe y, gracias a
+     * cascade = ALL + orphanRemoval = true en Medico.especialidades,
+     * elimina automáticamente sus relaciones MedicoEspecialidad.
+     */
+    @Transactional
+    public void eliminar(Long id) {
+        Medico medico = buscarPorId(id);
+        medicoRepository.delete(medico);
+        auditoriaService.registrar("ELIMINACION", "MEDICO", medico.getId());
     }
 
     private void validarDuplicados(Medico medico) {
-        if (medicoRepository.existsByCodigo(medico.getCodigo())) {
-            throw new DuplicateResourceException("Ya existe un médico con el código: " + medico.getCodigo());
-        }
         if (medicoRepository.existsByNumeroDocumento(medico.getNumeroDocumento())) {
             throw new DuplicateResourceException("Ya existe un médico con el número de documento: " + medico.getNumeroDocumento());
         }
@@ -87,11 +108,6 @@ public class MedicoService {
     }
 
     private void validarDuplicadosExcluyendoSelf(Medico existente, Medico datosNuevos) {
-        medicoRepository.findByCodigo(datosNuevos.getCodigo()).ifPresent(m -> {
-            if (!m.getId().equals(existente.getId())) {
-                throw new DuplicateResourceException("Ya existe un médico con el código: " + datosNuevos.getCodigo());
-            }
-        });
         medicoRepository.findByNumeroDocumento(datosNuevos.getNumeroDocumento()).ifPresent(m -> {
             if (!m.getId().equals(existente.getId())) {
                 throw new DuplicateResourceException("Ya existe un médico con el número de documento: " + datosNuevos.getNumeroDocumento());
@@ -108,5 +124,9 @@ public class MedicoService {
         if (estado == null) {
             throw new IllegalArgumentException("El estado debe ser ACTIVO o INACTIVO");
         }
+    }
+
+    private String generarCodigoMedico(Long id) {
+        return "MED-" + String.format("%03d", id);
     }
 }

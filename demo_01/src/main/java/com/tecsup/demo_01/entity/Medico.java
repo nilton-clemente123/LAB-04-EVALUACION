@@ -1,5 +1,6 @@
 package com.tecsup.demo_01.entity;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -23,8 +24,8 @@ public class Medico {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "El código es obligatorio")
-    @Column(nullable = false, unique = true, length = 50)
+    // Generado automáticamente a partir del ID (MED-###)
+    @Column(unique = true, length = 50)
     private String codigo;
 
     @NotBlank(message = "El tipo de documento es obligatorio")
@@ -56,7 +57,7 @@ public class Medico {
     private EstadoMedico estado;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "medico")
+    @OneToMany(mappedBy = "medico", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MedicoEspecialidad> especialidades = new ArrayList<>();
 
     public Medico() {

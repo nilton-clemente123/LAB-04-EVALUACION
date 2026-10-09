@@ -6,6 +6,7 @@ import com.tecsup.demo_01.service.MedicoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -66,5 +67,14 @@ public class MedicoController {
     @PatchMapping("/{id}/estado")
     public ResponseEntity<Medico> cambiarEstado(@PathVariable Long id, @RequestBody EstadoMedicoRequest request) {
         return ResponseEntity.ok(medicoService.cambiarEstado(id, request.getEstado()));
+    }
+
+    /**
+     * Eliminar médico -> 204 No Content / 404.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        medicoService.eliminar(id);
+        return ResponseEntity.noContent().build();
     }
 }
